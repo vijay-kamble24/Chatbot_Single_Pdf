@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocuStream AI - Single PDF Streaming Chatbot</title>
+  <meta name="description" content="AI chatbot for uploading and querying single PDFs using semantic search and streaming responses.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container" id="app-root">
+    
+    <!-- Left Navigation / File Sidebar -->
+    <aside class="sidebar" id="sidebar-left" aria-label="Documents Management">
+      <header class="sidebar-header">
+        <div class="logo-container">
+          <div class="logo-icon"></div>
+          <h1>DocuStream AI</h1>
+        </div>
+        <p class="subtitle">Single PDF Streaming QA</p>
+      </header>
+
+      <!-- PDF Uploader Card -->
+      <section class="upload-section" id="upload-card">
+        <h2>Upload Document</h2>
+        <form id="upload-form" enctype="multipart/form-data">
+          <div class="drop-zone" id="drag-drop-zone">
+            <span class="drop-zone-icon"></span>
+            <span class="drop-zone-text">Drag & drop PDF here or click to browse</span>
+            <input type="file" id="pdf-file-input" name="file" accept=".pdf" class="file-input">
+          </div>
+          <button type="submit" id="upload-submit-btn" class="btn btn-primary" disabled>Upload File</button>
+        </form>
+        <div class="upload-progress-container" id="upload-progress-wrapper" style="display: none;">
+          <label for="upload-progress">Ingesting PDF...</label>
+          <progress id="upload-progress" class="progress-bar" value="0" max="100" style="--brand-hue: 210;"></progress>
+          <span id="upload-progress-percent">0%</span>
+        </div>
+      </section>
+
+      <!-- Scan Folder Option -->
+      <section class="scan-section" id="scan-folder-card">
+        <div class="scan-header">
+          <h2>Local Directories</h2>
+          <button type="button" id="scan-folder-btn" class="btn btn-secondary btn-small" title="Scan data folder for changes">Scan Folder</button>
+        </div>
+        <p class="scan-desc">Scans the configured <code>./data</code> directory recursively for new or modified files.</p>
+      </section>
+
+      <!-- PDF Files List -->
+      <section class="files-section">
+        <h2>Documents Registry</h2>
+        <div class="file-list-container" id="pdf-list-container">
+          <!-- Dynamically populated files list -->
+          <div class="no-files">No documents processed yet. Click Scan Folder or upload a PDF.</div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Main Chat Workspace -->
+    <main class="chat-workspace" id="chat-panel">
+      <!-- Active PDF Header -->
+      <header class="chat-header" id="active-doc-header">
+        <div class="doc-info-wrapper">
+          <span class="doc-badge">Active</span>
+          <h2 id="active-pdf-title">Select a document to begin chatting</h2>
+          <span class="doc-meta-details" id="active-pdf-meta">Select a PDF from the sidebar. Questions will target only that document.</span>
+        </div>
+        <div class="session-actions">
+          <button type="button" id="clear-chat-btn" class="btn btn-text btn-small" style="display: none;">Clear Chat</button>
+        </div>
+      </header>
+
+      <!-- Chat Feed Display -->
+      <section class="chat-feed" id="chat-feed-container">
+        <!-- Welcome Screen when no active chat -->
+        <div class="welcome-screen" id="chat-welcome-screen">
+          <div class="welcome-icon"></div>
+          <h3>Welcome to DocuStream AI</h3>
+          <p>This workspace allows you to converse with individual PDF documents using high-speed semantic search. Simply upload or select a processed document to start.</p>
+          <div class="steps-list">
+            <div class="step-item">
+              <span class="step-num">1</span>
+              <p>Upload a PDF file or press <strong>Scan Folder</strong> to import from <code>./data</code></p>
+            </div>
+            <div class="step-item">
+              <span class="step-num">2</span>
+              <p>Select your target document in the sidebar</p>
+            </div>
+            <div class="step-item">
+              <span class="step-num">3</span>
+              <p>Type your questions! Answers are streamed live with citations.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Query Form -->
+      <footer class="chat-input-area" id="chat-input-wrapper">
+        <form id="chat-form" class="chat-form-element">
+          <div class="input-container">
+            <textarea id="chat-input" placeholder="Ask a question about the selected document..." required rows="1" disabled></textarea>
+            <button type="submit" id="chat-submit-btn" class="btn btn-icon" disabled aria-label="Send message">
+              <svg class="send-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+          <div class="input-hints">
+            <span>Press <strong>Enter</strong> to send, <strong>Shift+Enter</strong> for newline</span>
+          </div>
+        </form>
+      </footer>
+    </main>
+
+    <!-- Right Monitoring Panel -->
+    <aside class="sidebar monitoring-sidebar" id="sidebar-right" aria-label="System Performance Dashboard">
+      <header class="sidebar-header">
+        <div class="logo-container">
+          <div class="logo-icon monitor-icon"></div>
+          <h2>System Performance</h2>
+        </div>
+        <p class="subtitle">Real-time health statistics</p>
+      </header>
+
+      <!-- System Resources -->
+      <section class="monitor-card" id="resource-stats">
+        <h3>Host Resources</h3>
+        <div class="stat-row">
+          <span class="stat-label">CPU Usage</span>
+          <div class="stat-visual-wrapper">
+            <div class="stat-bar-outer">
+              <div class="stat-bar-inner" id="cpu-bar" style="width: 0%; --bar-color: #10B981;"></div>
+            </div>
+            <span class="stat-value" id="cpu-value">0%</span>
+          </div>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">RAM Usage</span>
+          <div class="stat-visual-wrapper">
+            <div class="stat-bar-outer">
+              <div class="stat-bar-inner" id="ram-bar" style="width: 0%; --bar-color: #3B82F6;"></div>
+            </div>
+            <span class="stat-value" id="ram-value">0%</span>
+          </div>
+        </div>
+        <div class="cpu-warning-text" id="cpu-warning" style="display: none;">
+          Caution: CPU usage exceeds 50% threshold.
+        </div>
+      </section>
+
+      <!-- Database Statistics -->
+      <section class="monitor-card" id="database-stats">
+        <h3>Database Statistics</h3>
+        <div class="data-grid">
+          <div class="data-box">
+            <span class="box-number" id="stats-docs">0</span>
+            <span class="box-label">Total PDFs</span>
+          </div>
+          <div class="data-box">
+            <span class="box-number" id="stats-chunks">0</span>
+            <span class="box-label">SQL Chunks</span>
+          </div>
+        </div>
+        <div class="db-details">
+          <div class="detail-row">
+            <span>Completed PDFs:</span>
+            <span class="detail-val" id="db-completed">0</span>
+          </div>
+          <div class="detail-row">
+            <span>Processing PDFs:</span>
+            <span class="detail-val" id="db-processing">0</span>
+          </div>
+          <div class="detail-row">
+            <span>Failed PDFs:</span>
+            <span class="detail-val text-error" id="db-failed">0</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Latency & Configuration -->
+      <section class="monitor-card" id="performance-stats">
+        <h3>Performance Metrics</h3>
+        <div class="detail-row">
+          <span>Avg Ingestion:</span>
+          <span class="detail-val" id="perf-ingest">0s</span>
+        </div>
+        <div class="detail-row">
+          <span>Avg Query Latency:</span>
+          <span class="detail-val" id="perf-query">0s</span>
+        </div>
+      </section>
+
+      <section class="monitor-card" id="config-stats">
+        <h3>Active Configurations</h3>
+        <div class="detail-row">
+          <span>LLM Engine:</span>
+          <span class="detail-val" id="config-llm">Pending...</span>
+        </div>
+        <div class="detail-row">
+          <span>Embedding:</span>
+          <span class="detail-val" id="config-embed">Pending...</span>
+        </div>
+        <div class="detail-row">
+          <span>Chunk Config:</span>
+          <span class="detail-val" id="config-chunk">500-800 / 50-100</span>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- Native Modal Dialog for Citation View (Uses HTML5 native dialog) -->
+  <dialog id="citation-dialog" class="citation-modal">
+    <header class="modal-header">
+      <h3>Document Reference Details</h3>
+      <button type="button" id="close-modal-btn" class="close-btn" aria-label="Close dialog">&times;</button>
+    </header>
+    <div class="modal-body">
+      <div class="citation-meta">
+        <span class="citation-source-doc" id="modal-pdf-name">document.pdf</span>
+        <span class="citation-page-badge" id="modal-page-num">Page X</span>
+      </div>
+      <blockquote class="citation-text" id="modal-citation-content">
+        <!-- Dynamic snippet -->
+      </blockquote>
+    </div>
+    <footer class="modal-footer">
+      <button type="button" id="modal-confirm-close-btn" class="btn btn-secondary">Close Reference</button>
+    </footer>
+  </dialog>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-root"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
